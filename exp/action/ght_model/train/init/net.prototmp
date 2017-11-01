@@ -1,0 +1,84 @@
+# Covering the full 10,000 testing and 40,000 training images.
+# Unsupervised test settings
+init_test_interval: 0 # How many iterations between each test
+init_test_iter: 625   # number of batches per test - 625*64=40000
+# The base learning rate, momentum and the weight decay of the network.
+base_lr: 1
+momentum: 0.9
+weight_decay: 0
+# The learning rate policy
+lr_policy: "fixed"
+# Number of iterations between displays
+display: 10
+# The maximum number of iterations
+max_iter: 1
+# snapshot intermediate results
+snapshot: 1
+snapshot_prefix: "{{ name }}"
+# solver mode: CPU or GPU
+solver_mode: GPU
+type: "SGD"
+debug_info: false
+snapshot_after_train: false
+random_seed: 314159
+
+net_param {
+    name: "{{ name }}"
+    ##############
+    ### Source ###
+    ##############
+    layer {
+        name: "mnist"
+        type: "HDF5Data"
+        top: "data"
+        top: "label"
+        hdf5_data_param {
+            source: "data/train_data/index.txt"
+            batch_size: 100
+            shuffle: true
+        }
+        include: { 
+            phase: TRAIN 
+        }
+    }
+
+
+    layer {
+        name: "sim1"
+        type: "Similarity"
+        bottom: "data"
+        top: "sim1"
+        param {
+            lr_mult: 0
+            min_value: -0.5
+            max_value: 0.5
+        }
+        param {
+            lr_mult: 0
+            min_value: 0
+        }
+        similarity_param {
+            similarity_function: L2
+            num_instances: {{ sim1_num_instances }}
+            bias_term: false
+            normalization_term: true
+            normalization_term_fudge: 0.0001
+            block_param {
+                block_size: 2
+                stride: 1
+            }
+            unsupervised_init {
+                type: "gmm"
+                max_iterations: 115
+                num_batches: 50
+                fudge_factor: 1e-4
+            }
+        }
+    }
+    layer {
+        name: "sink"
+        type: "Silence"
+        bottom: "sim1"
+        bottom: "label"
+    }
+}
